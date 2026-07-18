@@ -2,7 +2,7 @@
 
 AI Agent Security Firewall for indirect prompt-injection experiments.
 
-## Aariz day 2/3 scope
+## Aariz Day 2–5 scope
 
 This repo now has the core-security scaffold for Aariz's assigned work:
 
@@ -13,6 +13,9 @@ This repo now has the core-security scaffold for Aariz's assigned work:
 - `demo_agent.py` fetches a URL or local HTML file and runs with `--guard on|off`.
 - `dashboard.py` generates a static Day 4 HTML dashboard for corpus metrics,
   decision mix, and sample-level filtering.
+- `guard/audit.py` provides the Day 5 privacy-safe audit trail: it logs the
+  decision, score, provenance, sanitized source, and a SHA-256 content digest,
+  never raw fetched text or embedded payloads.
 
 The classifier reads credentials from `OPENAI_API_KEY`. It also supports
 `OPENAI_MODEL`, defaulting to `gpt-5`.
@@ -53,6 +56,17 @@ Run the end-to-end demo:
 ```powershell
 python demo_agent.py --guard off --file .\demo_pages\malicious.html
 python demo_agent.py --guard on --classifier heuristic --file .\demo_pages\malicious.html
+```
+
+## Day 5: Decision Audit Trail
+
+Append JSONL audit records during a guarded run with `--audit-log`. The log is
+ignored by Git by default and does not include the page/corpus text. URL query
+parameters, fragments, and credentials are stripped from logged sources.
+
+```powershell
+python demo_agent.py --guard on --classifier heuristic --file .\demo_pages\malicious.html --audit-log .\reports\audit.jsonl
+python run_corpus_test.py --classifier heuristic --audit-log .\reports\audit.jsonl
 ```
 
 Expected behavior:

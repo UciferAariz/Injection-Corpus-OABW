@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from guard.audit import append_event, event_from_result
 from guard.core import real_classify
 from guard.heuristics import heuristic_score
 from guard.policy import GuardDecision, evaluate_content
@@ -64,7 +65,9 @@ def load_samples(root: Path) -> list[Sample]:
     return samples
 
 
-def run(samples: list[Sample], classifier_name: str = "real") -> int:
+def run(
+    samples: list[Sample], classifier_name: str = "real", audit_log: Path | None = None
+) -> int:
     if not samples:
         print("No corpus samples found. Add JSONL files under corpus/ or TXT files under corpus/malicious and corpus/clean.")
         return 2
@@ -84,6 +87,12 @@ def run(samples: list[Sample], classifier_name: str = "real") -> int:
             print(f"Classifier failed while processing {sample.path}: {exc}")
             print("Tip: use `python run_corpus_test.py --classifier heuristic` for offline testing, or fix API quota/billing for real classification.")
             return 1
+
+        if audit_log:
+            append_event(
+                audit_log,
+                event_from_result(result, classifier=classifier_name, content=sample.text),
+            )
 
         if result.decision is GuardDecision.PASS:
             passed += 1
@@ -124,8 +133,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corpus", default="corpus", type=Path)
     parser.add_argument("--classifier", choices=["real", "llm", "heuristic"], default="real")
+    parser.add_argument(
+        "--audit-log",
+        type=Path,
+        help="Append privacy-safe decision metadata as JSONL; corpus text is never logged.",
+    )
     args = parser.parse_args()
-    return run(load_samples(args.corpus), classifier_name=args.classifier)
+    return run(load_samples(args.corpus), classifier_name=args.classifier, audit_log=args.audit_log)
 
 
 if __name__ == "__main__":

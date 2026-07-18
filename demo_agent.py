@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from guard.audit import append_event, event_from_result
 from guard.heuristics import heuristic_score
 from guard.policy import GuardDecision, evaluate_content
 from guard.provenance import tag_untrusted
@@ -52,11 +53,16 @@ def naive_agent_action(page_text: str) -> str:
     return f"SAFE SUMMARY: {summary}"
 
 
-def guarded_agent_action(page_text: str, source: str, classifier_name: str) -> str:
+def guarded_agent_action(page_text: str, source: str, classifier_name: str, audit_log: Path | None = None) -> str:
     if classifier_name == "heuristic":
         result = evaluate_content(tag_untrusted(page_text, source=source), classifier=heuristic_score)
     else:
         result = evaluate_content(tag_untrusted(page_text, source=source))
+    if audit_log:
+        append_event(
+            audit_log,
+            event_from_result(result, classifier=classifier_name, content=page_text),
+        )
     if result.decision is GuardDecision.BLOCK:
         return f"BLOCKED: score={result.score:.2f} source={result.source} reason={result.reason}"
     if result.decision is GuardDecision.WRAP:
@@ -71,13 +77,18 @@ def main() -> int:
     parser.add_argument("--classifier", choices=["real", "heuristic"], default="real")
     parser.add_argument("--url")
     parser.add_argument("--file", type=Path)
+    parser.add_argument(
+        "--audit-log",
+        type=Path,
+        help="Append privacy-safe guard decision metadata as JSONL (guard-on only).",
+    )
     args = parser.parse_args()
 
     raw, source = fetch_source(args.url, args.file)
     page_text = html_to_text(raw)
 
     if args.guard == "on":
-        print(guarded_agent_action(page_text, source, args.classifier))
+        print(guarded_agent_action(page_text, source, args.classifier, args.audit_log))
     else:
         print(naive_agent_action(page_text))
     return 0
