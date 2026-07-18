@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from guard.core import real_classify
 from guard.policy import GuardDecision, evaluate_content
 from guard.provenance import tag_untrusted
 
@@ -24,6 +25,16 @@ class Sample:
     text: str
     malicious: bool
     path: Path
+
+
+def heuristic_only_classifier(_text: str) -> float:
+    return 0.0
+
+
+def choose_classifier(name: str):
+    if name == "llm":
+        return real_classify
+    return heuristic_only_classifier
 
 
 def load_samples(root: Path) -> list[Sample]:
@@ -56,17 +67,18 @@ def load_samples(root: Path) -> list[Sample]:
     return samples
 
 
-def run(samples: list[Sample]) -> int:
+def run(samples: list[Sample], classifier_name: str = "llm") -> int:
     if not samples:
         print("No corpus samples found. Add JSONL files under corpus/ or TXT files under corpus/malicious and corpus/clean.")
         return 2
 
+    classifier = choose_classifier(classifier_name)
     false_positive = 0
     false_negative = 0
     correct = 0
 
     for sample in samples:
-        result = evaluate_content(tag_untrusted(sample.text, source=str(sample.path)))
+        result = evaluate_content(tag_untrusted(sample.text, source=str(sample.path)), classifier=classifier)
         predicted_malicious = result.decision is GuardDecision.BLOCK
         if predicted_malicious == sample.malicious:
             correct += 1
@@ -94,8 +106,9 @@ def run(samples: list[Sample]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corpus", default="corpus", type=Path)
+    parser.add_argument("--classifier", choices=["heuristic", "llm"], default="llm")
     args = parser.parse_args()
-    return run(load_samples(args.corpus))
+    return run(load_samples(args.corpus), classifier_name=args.classifier)
 
 
 if __name__ == "__main__":

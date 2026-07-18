@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Callable
 
 from .core import real_classify
 from .heuristics import heuristic_score
@@ -32,10 +33,13 @@ class GuardResult:
     reason: str
 
 
-def evaluate_content(content: TaggedContent) -> GuardResult:
+Classifier = Callable[[str], float]
+
+
+def evaluate_content(content: TaggedContent, classifier: Classifier = real_classify) -> GuardResult:
     """Classify and apply stricter defaults to untrusted external content."""
 
-    model_score = real_classify(content.text)
+    model_score = classifier(content.text)
     cheap_score = heuristic_score(content.text)
     score = max(model_score, cheap_score)
 
