@@ -16,6 +16,8 @@ WRAP_THRESHOLD = 0.45
 UNTRUSTED_BLOCK_THRESHOLD = 0.70
 UNTRUSTED_WRAP_THRESHOLD = 0.30
 
+Classifier = Callable[[str], float]
+
 
 class GuardDecision(str, Enum):
     PASS = "pass"
@@ -33,7 +35,7 @@ class GuardResult:
     reason: str
 
 
-def evaluate_content(content: TaggedContent, classifier: Callable[[str], float] = real_classify) -> GuardResult:
+def evaluate_content(content: TaggedContent, classifier: Classifier = real_classify) -> GuardResult:
     """Classify and apply stricter defaults to untrusted external content."""
 
     model_score = classifier(content.text)

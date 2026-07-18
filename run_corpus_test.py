@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from guard.core import real_classify
 from guard.heuristics import heuristic_score
 from guard.policy import GuardDecision, evaluate_content
 from guard.provenance import tag_untrusted
@@ -25,6 +26,12 @@ class Sample:
     text: str
     malicious: bool
     path: Path
+
+
+def choose_classifier(name: str):
+    if name in {"real", "llm"}:
+        return real_classify
+    return heuristic_score
 
 
 def load_samples(root: Path) -> list[Sample]:
@@ -57,12 +64,12 @@ def load_samples(root: Path) -> list[Sample]:
     return samples
 
 
-def run(samples: list[Sample], classifier_name: str) -> int:
+def run(samples: list[Sample], classifier_name: str = "real") -> int:
     if not samples:
         print("No corpus samples found. Add JSONL files under corpus/ or TXT files under corpus/malicious and corpus/clean.")
         return 2
 
-    classifier = heuristic_score if classifier_name == "heuristic" else None
+    classifier = choose_classifier(classifier_name)
     false_positive = 0
     false_negative = 0
     correct = 0
@@ -72,10 +79,7 @@ def run(samples: list[Sample], classifier_name: str) -> int:
 
     for sample in samples:
         try:
-            if classifier:
-                result = evaluate_content(tag_untrusted(sample.text, source=str(sample.path)), classifier=classifier)
-            else:
-                result = evaluate_content(tag_untrusted(sample.text, source=str(sample.path)))
+            result = evaluate_content(tag_untrusted(sample.text, source=str(sample.path)), classifier=classifier)
         except Exception as exc:
             print(f"Classifier failed while processing {sample.path}: {exc}")
             print("Tip: use `python run_corpus_test.py --classifier heuristic` for offline testing, or fix API quota/billing for real classification.")
@@ -119,9 +123,9 @@ def run(samples: list[Sample], classifier_name: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--corpus", default="corpus", type=Path)
-    parser.add_argument("--classifier", choices=["real", "heuristic"], default="real")
+    parser.add_argument("--classifier", choices=["real", "llm", "heuristic"], default="real")
     args = parser.parse_args()
-    return run(load_samples(args.corpus), args.classifier)
+    return run(load_samples(args.corpus), classifier_name=args.classifier)
 
 
 if __name__ == "__main__":
