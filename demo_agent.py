@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from guard.heuristics import heuristic_score
 from guard.policy import GuardDecision, evaluate_content
 from guard.provenance import tag_untrusted
 
@@ -51,18 +52,23 @@ def naive_agent_action(page_text: str) -> str:
     return f"SAFE SUMMARY: {summary}"
 
 
-def guarded_agent_action(page_text: str, source: str) -> str:
-    result = evaluate_content(tag_untrusted(page_text, source=source))
+def guarded_agent_action(page_text: str, source: str, classifier_name: str) -> str:
+    if classifier_name == "heuristic":
+        result = evaluate_content(tag_untrusted(page_text, source=source), classifier=heuristic_score)
+    else:
+        result = evaluate_content(tag_untrusted(page_text, source=source))
     if result.decision is GuardDecision.BLOCK:
         return f"BLOCKED: score={result.score:.2f} source={result.source} reason={result.reason}"
     if result.decision is GuardDecision.WRAP:
-        return f"WRAPPED: score={result.score:.2f}\n{naive_agent_action(result.text)}"
+        summary = " ".join(page_text.split())[:300]
+        return f"WRAPPED: score={result.score:.2f}. Embedded instructions were isolated.\nSAFE SUMMARY: {summary}"
     return naive_agent_action(result.text)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--guard", choices=["on", "off"], default="on")
+    parser.add_argument("--classifier", choices=["real", "heuristic"], default="real")
     parser.add_argument("--url")
     parser.add_argument("--file", type=Path)
     args = parser.parse_args()
@@ -71,7 +77,7 @@ def main() -> int:
     page_text = html_to_text(raw)
 
     if args.guard == "on":
-        print(guarded_agent_action(page_text, source))
+        print(guarded_agent_action(page_text, source, args.classifier))
     else:
         print(naive_agent_action(page_text))
     return 0

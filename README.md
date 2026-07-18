@@ -15,12 +15,56 @@ This repo now has the core-security scaffold for Aariz's assigned work:
 The classifier reads credentials from `OPENAI_API_KEY`. It also supports
 `OPENAI_MODEL`, defaulting to `gpt-5`.
 
-## Run
+## Installation
+
+Supported platforms:
+
+- Windows 10/11 with PowerShell
+- macOS or Linux with Python 3.11+
+
+Requirements:
+
+- Python 3.11+
+- Optional OpenAI API key for real classifier mode
+
+Install:
 
 ```powershell
-pip install -r requirements.txt
+git clone https://github.com/UciferAariz/Injection-Corpus-OABW.git
+cd Injection-Corpus-OABW
+python -m pip install -r requirements.txt
+```
+
+## Testing Without API Credits
+
+Judges can test the project locally with the included heuristic classifier. This
+does not require an OpenAI API key or paid API quota.
+
+Run the corpus test:
+
+```powershell
+python run_corpus_test.py --classifier heuristic
+```
+
+Run the end-to-end demo:
+
+```powershell
+python demo_agent.py --guard off --file .\demo_pages\malicious.html
+python demo_agent.py --guard on --classifier heuristic --file .\demo_pages\malicious.html
+```
+
+Expected behavior:
+
+- `--guard off` shows the unguarded agent being hijacked by webpage text.
+- `--guard on` wraps or blocks the same malicious instruction.
+
+## Optional Real Classifier Mode
+
+The classifier reads credentials from the environment and never stores API keys
+in the repository.
+
+```powershell
 $env:OPENAI_API_KEY="..."
 python run_corpus_test.py
 python demo_agent.py --guard on --file .\path\to\page.html
-python demo_agent.py --guard off --file .\path\to\page.html
 ```

@@ -15,7 +15,9 @@ SUSPICIOUS_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bignore (all )?(previous|prior|above) instructions\b", re.I),
     re.compile(r"\b(disregard|override) (the )?(system|developer|previous) (prompt|instructions)\b", re.I),
     re.compile(r"\b(reveal|print|show|exfiltrate|send) (the )?(system prompt|api key|token|secret|password)\b", re.I),
+    re.compile(r"\b(send|forward|leak|exfiltrate)\b.*\b(user'?s?|private|current)\b.*\b(api key|oauth token|token|secret|password|chat history|email)\b", re.I),
     re.compile(r"\b(call|use|invoke) (the )?(email|browser|shell|http|web) tool\b", re.I),
+    re.compile(r"\b(invoke|run)\b.*\b(shell|command)\b.*\b(secret|environment|env)\b", re.I),
     re.compile(r"\byou are now\b.*\b(system|developer|admin)\b", re.I),
 )
 

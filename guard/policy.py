@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -32,10 +33,10 @@ class GuardResult:
     reason: str
 
 
-def evaluate_content(content: TaggedContent) -> GuardResult:
+def evaluate_content(content: TaggedContent, classifier: Callable[[str], float] = real_classify) -> GuardResult:
     """Classify and apply stricter defaults to untrusted external content."""
 
-    model_score = real_classify(content.text)
+    model_score = classifier(content.text)
     cheap_score = heuristic_score(content.text)
     score = max(model_score, cheap_score)
 
